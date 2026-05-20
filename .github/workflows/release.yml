@@ -1,0 +1,124 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Resolve version from tag
+        id: version
+        run: |
+          # Strip leading "v"
+          echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        run: npm run build
+
+      - name: Bundle size check
+        run: node scripts/check-size.mjs
+
+      - name: Compute SRI hash
+        id: sri
+        run: |
+          HASH=$(openssl dgst -sha384 -binary dist/vocadesk.min.js | openssl base64 -A)
+          echo "sri=sha384-${HASH}" >> "$GITHUB_OUTPUT"
+          echo "Computed SRI: sha384-${HASH}"
+
+      # Upload via the S3-compatible R2 API. Requires:
+      #   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME
+      - name: Upload to Cloudflare R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET_NAME }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+          PREFIX="embed/v${VERSION}"
+          aws --endpoint-url "$ENDPOINT" s3 cp \
+            dist/vocadesk.min.js \
+            "s3://${R2_BUCKET}/${PREFIX}/vocadesk.min.js" \
+            --cache-control "public, max-age=31536000, immutable" \
+            --content-type "application/javascript"
+          aws --endpoint-url "$ENDPOINT" s3 cp \
+            dist/vocadesk.min.js.map \
+            "s3://${R2_BUCKET}/${PREFIX}/vocadesk.min.js.map" \
+            --cache-control "public, max-age=31536000, immutable" \
+            --content-type "application/json"
+
+      - name: Print SRI hash + URL for release notes
+        run: |
+          cat <<EOF >> "$GITHUB_STEP_SUMMARY"
+          ## Release v${{ steps.version.outputs.version }}
+
+          **CDN URL**
+          \`\`\`
+          https://cdn.vocadesk.com/embed/v${{ steps.version.outputs.version }}/vocadesk.min.js
+          \`\`\`
+
+          **SRI hash**
+          \`\`\`
+          ${{ steps.sri.outputs.sri }}
+          \`\`\`
+
+          **Snippet**
+          \`\`\`html
+          <script
+            src="https://cdn.vocadesk.com/embed/v${{ steps.version.outputs.version }}/vocadesk.min.js"
+            integrity="${{ steps.sri.outputs.sri }}"
+            crossorigin="anonymous"
+            defer
+          ></script>
+          \`\`\`
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ steps.version.outputs.version }}
+          body: |
+            ## CDN URL
+
+            ```
+            https://cdn.vocadesk.com/embed/v${{ steps.version.outputs.version }}/vocadesk.min.js
+            ```
+
+            ## SRI hash
+
+            ```
+            ${{ steps.sri.outputs.sri }}
+            ```
+
+            ## Snippet
+
+            ```html
+            <script
+              src="https://cdn.vocadesk.com/embed/v${{ steps.version.outputs.version }}/vocadesk.min.js"
+              integrity="${{ steps.sri.outputs.sri }}"
+              crossorigin="anonymous"
+              defer
+            ></script>
+            ```
+          files: |
+            dist/vocadesk.min.js
+            dist/vocadesk.min.js.map

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vocadesk embed — plain HTML</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 640px;
+      margin: 4rem auto;
+      padding: 1rem;
+      color: #1a1a2e;
+      line-height: 1.55;
+    }
+    h1 { font-size: 1.5rem; }
+    p { color: #555; }
+    .demo { margin: 2rem 0; }
+  </style>
+</head>
+<body>
+  <h1>Vocadesk embed — plain HTML</h1>
+  <p>The button below is wired via the <code>data-vocadesk-embed</code> attribute. The SDK auto-binds on page load.</p>
+
+  <div class="demo">
+    <button data-vocadesk-embed="emb_demo" style="width:220px;height:60px">
+      Talk to us
+    </button>
+  </div>
+
+  <p style="font-size:0.9em;color:#888">
+    Open the dev tools console to see <code>vocadesk:start</code>, <code>vocadesk:end</code>, and <code>vocadesk:error</code> events.
+  </p>
+
+  <script>
+    document.addEventListener("vocadesk:start", () => console.log("call started"));
+    document.addEventListener("vocadesk:end",   (e) => console.log("call ended:", e.detail));
+    document.addEventListener("vocadesk:error", (e) => console.log("call error:", e.detail));
+  </script>
+
+  <script src="/dist/vocadesk.min.js" defer></script>
+</body>
+</html>
