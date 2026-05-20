@@ -30,7 +30,7 @@ jobs:
       - name: Unit tests
         run: npm test
 
-      - name: Build
+      - name: Build (production URLs — for bundle size + lint check)
         run: npm run build
 
       - name: Bundle size check
@@ -38,6 +38,15 @@ jobs:
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
+
+      # Rebuild with the mock-server URLs baked in. The production bundle
+      # points at embed.vocadesk.com / voice.vocadesk.com, which the e2e
+      # environment can't reach — the test mock server runs on 127.0.0.1.
+      - name: Build (mock URLs for e2e)
+        env:
+          VITE_API_URL: http://127.0.0.1:8799
+          VITE_WSS_URL: ws://127.0.0.1:8788/embed/v1/call
+        run: npm run build
 
       - name: E2E tests
         run: npm run e2e
