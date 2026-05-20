@@ -1,0 +1,36 @@
+{
+  "name": "@vocadesk/embed-sdk",
+  "version": "0.1.0",
+  "description": "Vocadesk browser embed — turn any HTML element into a voice call interface.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:check-size": "npm run build && node scripts/check-size.mjs",
+    "lint": "eslint --max-warnings=0 src tests",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "playwright test",
+    "e2e:install": "playwright install --with-deps chromium",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@types/node": "^22.7.0",
+    "jsdom": "^25.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.8.0",
+    "@typescript-eslint/parser": "^8.8.0",
+    "eslint": "^9.12.0",
+    "playwright": "^1.48.0",
+    "terser": "^5.34.0",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.8",
+    "vitest": "^2.1.2",
+    "ws": "^8.18.0",
+    "@types/ws": "^8.5.12"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
