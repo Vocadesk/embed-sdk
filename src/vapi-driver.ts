@@ -67,13 +67,13 @@ export async function startVapiCall(args: {
     args.handlers.onCallEnded(durationMs);
   });
   vapi.on("error", (...payload: unknown[]) => {
-    const message =
-      payload[0] instanceof Error
-        ? payload[0].message
-        : typeof payload[0] === "string"
-          ? payload[0]
-          : "Vapi error";
-    args.handlers.onError(message);
+    // Vapi's error payload is loosely typed — it can be an Error, a
+    // string, or an object like { error, errorMsg, message, type }.
+    // Always log the raw payload so the page console has the truth even
+    // if our extractor falls back to "Vapi error".
+    // eslint-disable-next-line no-console
+    console.error("[vocadesk] Vapi error event:", ...payload);
+    args.handlers.onError(extractVapiErrorMessage(payload));
   });
 
   try {
@@ -88,6 +88,31 @@ export async function startVapiCall(args: {
   return {
     stop: () => vapi.stop().catch(() => undefined),
   };
+}
+
+/**
+ * Best-effort message extraction from a Vapi error payload.
+ * Common shapes observed: Error instances, raw strings, and objects with
+ * one of { error, errorMsg, message, msg, msg, type }.
+ */
+function extractVapiErrorMessage(payload: unknown[]): string {
+  const first = payload[0];
+  if (first instanceof Error) return first.message || first.name || "Vapi error";
+  if (typeof first === "string") return first;
+  if (first && typeof first === "object") {
+    const o = first as Record<string, unknown>;
+    const candidates = [o.errorMsg, o.error, o.message, o.msg, o.type, o.code];
+    for (const c of candidates) {
+      if (typeof c === "string" && c.length > 0) return c;
+      if (c instanceof Error && c.message) return c.message;
+    }
+    try {
+      return JSON.stringify(first);
+    } catch {
+      /* fall through */
+    }
+  }
+  return "Vapi error";
 }
 
 function resolveVapiCtor(mod: unknown): VapiCtor {
