@@ -47,7 +47,7 @@ On the embed's detail page (or by clicking the embed in the list) you'll see a *
 ```html
 <script
   src="https://cdn.vocadesk.com/embed/v0.3.5/vocadesk.min.js"
-  integrity="sha384-lQq2KYJjbP92RcQ72/t8iQ9lZyfHCXg6JppUjz4DybsfD6/sFeu1pMBglGVVb3jW"
+  integrity="sha384-qK4uRHw6CcexWRMp6QhFQa9foawR4EEuy0pf8d/DUHTZ4WDEpEgPDGFUI/fso4it"
   crossorigin="anonymous"
   defer
 ></script>
