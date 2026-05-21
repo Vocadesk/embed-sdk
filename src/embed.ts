@@ -46,7 +46,13 @@ export class Embed implements EmbedHandle {
   private agentEnding = false;
 
   constructor(deps: EmbedDeps) {
-    this.host = deps.host;
+    // Per the W3C spec, attachShadow() only works on a fixed set of elements
+    // (div, span, article, section, p, body, etc. — and any custom element).
+    // It does NOT work on <button>, <input>, <a>, <img>, and several others.
+    // If a customer pasted our snippet using <button>, swap that out for a
+    // semantically-equivalent <div> at the same DOM position with the same
+    // attributes, so we can attach a shadow root to it.
+    this.host = ensureShadowableHost(deps.host);
     this.options = deps.options;
 
     const defaultLabel =
@@ -323,4 +329,48 @@ export class Embed implements EmbedHandle {
       new CustomEvent("vocadesk:error", { bubbles: true, detail: { code, message } }),
     );
   }
+}
+
+/**
+ * Returns an element that is guaranteed to support attachShadow().
+ *
+ * Per the W3C spec the only built-in elements that accept a shadow root are
+ * the ones in SHADOW_ALLOWED below — plus any custom element (which has a
+ * dash in its tag name). If `host` is anything else (most commonly
+ * `<button>`, which our own snippet generator used to emit), swap it for
+ * a `<div>` in the same DOM position carrying the same attributes so the
+ * shadow attach later succeeds.
+ *
+ * Spec ref: https://html.spec.whatwg.org/multipage/dom.html#dom-element-attachshadow
+ *
+ * Tag-name check rather than try/catch because attachShadow has no undo —
+ * a successful probe still consumes the element's one allowed shadow root,
+ * and mountShadow's subsequent call would then throw.
+ */
+const SHADOW_ALLOWED = new Set([
+  "article", "aside", "blockquote", "body", "div", "footer",
+  "h1", "h2", "h3", "h4", "h5", "h6", "header", "main", "nav",
+  "p", "section", "span",
+]);
+
+export function ensureShadowableHost(host: HTMLElement): HTMLElement {
+  const tag = host.tagName.toLowerCase();
+  if (tag.includes("-") || SHADOW_ALLOWED.has(tag)) {
+    return host;
+  }
+  return swapHostToDiv(host);
+}
+
+function swapHostToDiv(host: HTMLElement): HTMLElement {
+  const div = document.createElement("div");
+  // Copy every attribute except ones meaningless or harmful on a div.
+  for (const attr of Array.from(host.attributes)) {
+    if (attr.name === "type") continue;     // button/input-only
+    if (attr.name === "disabled") continue; // form-control-only
+    div.setAttribute(attr.name, attr.value);
+  }
+  // Preserve the parent so document-level listeners (which find the element
+  // via querySelector) keep working after the swap.
+  host.parentNode?.replaceChild(div, host);
+  return div;
 }
