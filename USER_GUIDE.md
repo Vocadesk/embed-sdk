@@ -46,15 +46,15 @@ On the embed's detail page (or by clicking the embed in the list) you'll see a *
 
 ```html
 <script
-  src="https://cdn.vocadesk.com/embed/v0.3.0/vocadesk.min.js"
-  integrity="sha384-LA1tFt1J4Av/HjRQqpfV87PMMS1AOMzKnL72TLgqGAJEK3ZDuKtk5wczJfNqXvKP"
+  src="https://cdn.vocadesk.com/embed/v0.3.1/vocadesk.min.js"
+  integrity="sha384-ddsQDioMn5u5DPGsrq+LHqWSV2EfoNoEDGBm8s8O/vyESiPOnI0RwipwmNXg/Uek"
   crossorigin="anonymous"
   defer
 ></script>
 
-<button data-vocadesk-embed="emb_8sJ4kP3qXyZ…" style="width:220px;height:60px">
+<div data-vocadesk-embed="emb_8sJ4kP3qXyZ…" style="width:220px;height:60px">
   Talk to us
-</button>
+</div>
 ```
 
 Click **Copy snippet**. The `emb_…` value is already filled in for you — that's *your* embed ID.
@@ -66,7 +66,7 @@ Click **Copy snippet**. The `emb_…` value is already filled in for you — tha
 The snippet has two parts. They can be placed anywhere on the page, as long as both are present.
 
 - **The `<script>` line** loads the Vocadesk code. Put it once per page — anywhere inside `<head>` or near the end of `<body>` is fine. If you have it on several pages, repeat it on each.
-- **The `<button>` line** is the actual button visitors see. Put it where you want the button to appear (a contact section, a sticky corner, a hero CTA — your call).
+- **The `<div data-vocadesk-embed=…>` line** is the actual button visitors see (the SDK turns the div into a styled button at load time). Put it where you want the button to appear (a contact section, a sticky corner, a hero CTA — your call).
 
 ### Where to paste it, by host
 
@@ -173,13 +173,13 @@ If you have your own static-html test setup (or you save this as `test.html` on 
 <p>Click the button, allow your microphone, and ask anything.</p>
 
 <div class="demo">
-  <button data-vocadesk-embed="emb_REPLACE_ME" style="width:220px;height:60px">
+  <div data-vocadesk-embed="emb_REPLACE_ME" style="width:220px;height:60px">
     Talk to us
-  </button>
+  </div>
 </div>
 
 <script
-  src="https://cdn.vocadesk.com/embed/v0.3.0/vocadesk.min.js"
+  src="https://cdn.vocadesk.com/embed/v0.3.1/vocadesk.min.js"
   defer
 ></script>
 ```
