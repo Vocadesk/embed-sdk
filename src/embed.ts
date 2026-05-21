@@ -226,8 +226,15 @@ export class Embed implements EmbedHandle {
               }
             },
             onCallEnded: () => {
+              // The v2 path relies on the WS close to fire "ws_closed"
+              // (ending → ended). Vapi has no WS, so we have to drive
+              // both transitions ourselves — otherwise a user-initiated
+              // hangup gets stuck on "ending" with a busy spinner.
               if (this.machine.state === "active") {
-                this.machine.send("hangup");
+                this.machine.send("hangup"); // active → ending
+              }
+              if (this.machine.state === "ending") {
+                this.machine.send("ws_closed"); // ending → ended
               }
               this.teardownCall("server_end");
             },
