@@ -46,8 +46,8 @@ On the embed's detail page (or by clicking the embed in the list) you'll see a *
 
 ```html
 <script
-  src="https://cdn.vocadesk.com/embed/v0.3.4/vocadesk.min.js"
-  integrity="sha384-q+lv7PFtT9lH1K1WLrDtUxG3Q1q+ea5lTX4h3hNmbvnblgjHuaeCqJoaJQ37BRG+"
+  src="https://cdn.vocadesk.com/embed/v0.3.5/vocadesk.min.js"
+  integrity="sha384-lQq2KYJjbP92RcQ72/t8iQ9lZyfHCXg6JppUjz4DybsfD6/sFeu1pMBglGVVb3jW"
   crossorigin="anonymous"
   defer
 ></script>
@@ -179,7 +179,7 @@ If you have your own static-html test setup (or you save this as `test.html` on 
 </div>
 
 <script
-  src="https://cdn.vocadesk.com/embed/v0.3.4/vocadesk.min.js"
+  src="https://cdn.vocadesk.com/embed/v0.3.5/vocadesk.min.js"
   defer
 ></script>
 ```
