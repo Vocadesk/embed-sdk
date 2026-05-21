@@ -20,5 +20,11 @@ function readEnv(): { api?: string; wss?: string } {
 
 const env = readEnv();
 
-export const DEFAULT_API_URL = env.api ?? "https://embed.vocadesk.com";
-export const DEFAULT_WSS_URL = env.wss ?? "wss://voice.vocadesk.com/embed/v1/call";
+// Default endpoints. These are the live Cloud Run URLs until DNS for
+// embed.vocadesk.com / voice.vocadesk.com is set up at GoDaddy — at which
+// point switch these back to https://embed.vocadesk.com /
+// wss://voice.vocadesk.com/embed/v1/call and re-tag.
+export const DEFAULT_API_URL =
+  env.api ?? "https://embed-gateway-hd572tke3q-ew.a.run.app";
+export const DEFAULT_WSS_URL =
+  env.wss ?? "wss://voice-runtime2-hd572tke3q-ew.a.run.app/embed/v1/call";
