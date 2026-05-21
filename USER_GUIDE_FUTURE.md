@@ -21,17 +21,18 @@ You need:
 ## Step 1 — Create an embed in the dashboard
 
 1. Go to https://staging.vocadesk.com and log in.
-2. From the side menu choose **Embeds**.
-3. Click **New embed** (top right).
-4. Fill in the form:
-   - **Agent** — pick the agent you want visitors to talk to.
+2. From the side menu choose **Clients** → click the client this embed is for.
+3. Open the **Embeds** tab.
+4. Click **New embed** (top right of the tab).
+5. Fill in the form:
+   - **Agent** — pick one of this client's agents (the dropdown shows only that client's agents).
    - **Allowed origins** — one per line, the exact URLs of the sites where the button can run. **Format: `https://yourwebsite.com`** — no path, no trailing slash, no `www` unless you want both. Examples:
      ```
      https://acme.com
      https://www.acme.com
      ```
    - **Require Turnstile (bot challenge)** — leave **off** for normal use. Only turn on if you start seeing bot abuse.
-5. Click **Create**.
+6. Click **Create**.
 
 The page now shows your embed with a unique ID that looks like `emb_8sJ4kP3qXyZ…`.
 
