@@ -15,12 +15,25 @@ export interface EmbedHandle {
   destroy(): void;
 }
 
-/** JSON body returned by POST /v1/tokens. */
-export interface TokenResponse {
-  token: string;
-  wssUrl: string;
-  expiresAt: string;
-}
+/**
+ * JSON body returned by POST /v1/tokens. Tagged union by `provider`:
+ *  - 'voice-runtime2': v2 embeds. SDK opens a WSS handshake to wssUrl
+ *    with the JWT in the query string.
+ *  - 'vapi': legacy embeds. SDK loads @vapi-ai/web and calls
+ *    `new Vapi(vapiPublicKey).start(vapiAssistantId)`.
+ */
+export type TokenResponse =
+  | {
+      provider: "voice-runtime2";
+      token: string;
+      wssUrl: string;
+      expiresAt: string;
+    }
+  | {
+      provider: "vapi";
+      vapiPublicKey: string;
+      vapiAssistantId: string;
+    };
 
 export type ErrorCode =
   | "mic_denied"

@@ -57,13 +57,26 @@ export async function requestToken(args: RequestTokenArgs): Promise<TokenRespons
     throw new TokenError(res.status, code, message);
   }
 
-  const body = (await res.json()) as Partial<TokenResponse>;
-  if (!body.token || !body.wssUrl) {
+  const body = (await res.json()) as Record<string, unknown>;
+  if (body.provider === "vapi") {
+    if (typeof body.vapiPublicKey !== "string" || typeof body.vapiAssistantId !== "string") {
+      throw new TokenError(res.status, "token_failed", "Vapi token response missing fields");
+    }
+    return {
+      provider: "vapi",
+      vapiPublicKey: body.vapiPublicKey,
+      vapiAssistantId: body.vapiAssistantId,
+    };
+  }
+  // Default + explicit voice-runtime2 — keep accepting the old (untagged)
+  // shape so the SDK works against older gateway revisions during rollout.
+  if (typeof body.token !== "string" || typeof body.wssUrl !== "string") {
     throw new TokenError(res.status, "token_failed", "Token response missing fields");
   }
   return {
+    provider: "voice-runtime2",
     token: body.token,
     wssUrl: body.wssUrl,
-    expiresAt: body.expiresAt ?? "",
+    expiresAt: typeof body.expiresAt === "string" ? body.expiresAt : "",
   };
 }

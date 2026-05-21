@@ -22,12 +22,35 @@ describe("requestToken", () => {
       embedId: "emb_1",
       browserId: "br_1",
     });
+    expect(res.provider).toBe("voice-runtime2");
+    if (res.provider !== "voice-runtime2") throw new Error("unreachable");
     expect(res.token).toBe("jwt");
     expect(res.wssUrl).toBe("wss://x/y");
     const call = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0]!;
     expect(call[0]).toBe("https://api.example.com/v1/tokens");
     const body = JSON.parse(call[1].body) as Record<string, unknown>;
     expect(body).toEqual({ embedId: "emb_1", browserId: "br_1" });
+  });
+
+  it("returns vapi-shape response when provider='vapi'", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        provider: "vapi",
+        vapiPublicKey: "pk_live_abc",
+        vapiAssistantId: "asst_xyz",
+      }),
+    });
+    const res = await requestToken({
+      apiUrl: "https://api.example.com",
+      embedId: "emb_legacy",
+      browserId: "br_1",
+    });
+    expect(res.provider).toBe("vapi");
+    if (res.provider !== "vapi") throw new Error("unreachable");
+    expect(res.vapiPublicKey).toBe("pk_live_abc");
+    expect(res.vapiAssistantId).toBe("asst_xyz");
   });
 
   it("includes turnstile token when provided", async () => {

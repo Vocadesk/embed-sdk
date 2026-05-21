@@ -38,6 +38,8 @@ export class Embed implements EmbedHandle {
   private capture: CaptureSession | null = null;
   private playback: PlaybackSession | null = null;
   private ws: WsClient | null = null;
+  /** Set only for legacy (Vapi) calls; null on v2 calls. */
+  private vapiDriver: { stop(): Promise<void> } | null = null;
   private callStartedAt: number | null = null;
   private timerInterval: number | null = null;
   private resetTimeout: number | null = null;
@@ -176,16 +178,13 @@ export class Embed implements EmbedHandle {
     const apiUrl = this.options.apiUrl ?? DEFAULT_API_URL;
     const browserId = getBrowserId();
 
-    let token: string;
-    let wssUrl: string;
+    let tokenRes;
     try {
-      const tokenRes = await requestToken({
+      tokenRes = await requestToken({
         apiUrl,
         embedId: this.options.embedId,
         browserId,
       });
-      token = tokenRes.token;
-      wssUrl = tokenRes.wssUrl || this.options.wssUrl || DEFAULT_WSS_URL;
     } catch (err) {
       const code: ErrorCode =
         err instanceof TokenError ? (err.code as ErrorCode) : "token_failed";
@@ -193,6 +192,48 @@ export class Embed implements EmbedHandle {
       this.fail(code, msg);
       return;
     }
+
+    // Legacy embeds: hand off to Vapi. Different transport entirely — no
+    // WS, no JWT, no PCM piping. The capture + playback we just set up are
+    // not needed for the Vapi path (Vapi opens its own WebRTC stream), so
+    // tear them down before starting Vapi to avoid the mic being held twice.
+    if (tokenRes.provider === "vapi") {
+      this.capture?.stop();
+      this.capture = null;
+      this.playback?.close();
+      this.playback = null;
+      try {
+        const { startVapiCall } = await import("./vapi-driver.js");
+        const driver = await startVapiCall({
+          publicKey: tokenRes.vapiPublicKey,
+          assistantId: tokenRes.vapiAssistantId,
+          handlers: {
+            onCallStarted: () => {
+              if (this.machine.state === "connecting") {
+                this.machine.send("ws_open_and_started");
+              }
+            },
+            onCallEnded: () => {
+              if (this.machine.state === "active") {
+                this.machine.send("hangup");
+              }
+              this.teardownCall("server_end");
+            },
+            onError: (msg) => this.fail("ws_failed", msg),
+          },
+        });
+        this.vapiDriver = driver;
+        // No extra state transition here — the Vapi driver's onCallStarted
+        // fires "ws_open_and_started" same as the v2 WS path, taking us
+        // from "connecting" → "active".
+      } catch (err) {
+        this.fail("ws_failed", err instanceof Error ? err.message : "Vapi failed");
+      }
+      return;
+    }
+
+    const token = tokenRes.token;
+    const wssUrl = tokenRes.wssUrl || this.options.wssUrl || DEFAULT_WSS_URL;
 
     this.ws = new WsClient({
       wssUrl,
@@ -272,6 +313,10 @@ export class Embed implements EmbedHandle {
     if (this.ws) {
       try { this.ws.close(); } catch { /* ignore */ }
       this.ws = null;
+    }
+    if (this.vapiDriver) {
+      try { void this.vapiDriver.stop(); } catch { /* ignore */ }
+      this.vapiDriver = null;
     }
     if (this.capture) {
       try { this.capture.stop(); } catch { /* ignore */ }
