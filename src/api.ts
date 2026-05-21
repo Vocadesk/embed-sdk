@@ -5,6 +5,43 @@
 
 import type { TokenResponse } from "./types.js";
 
+/**
+ * Best-effort release of the concurrency slot. Used by the SDK after a
+ * call ends (Vapi has no server-side end signal) and on `pagehide` so a
+ * fresh tab can immediately reconnect without waiting for the gateway's
+ * 1-hour safety-net TTL. `keepalive` lets the request survive navigation.
+ */
+export function releaseSlot(args: {
+  apiUrl: string;
+  embedId: string;
+  browserId: string;
+}): void {
+  const url = `${args.apiUrl.replace(/\/+$/, "")}/v1/release`;
+  const body = JSON.stringify({
+    embedId: args.embedId,
+    browserId: args.browserId,
+  });
+  try {
+    // fetch keepalive is the modern path; if not supported (older Safari)
+    // fall back to sendBeacon which is fire-and-forget by design.
+    void fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      keepalive: true,
+    }).catch(() => undefined);
+  } catch {
+    try {
+      navigator.sendBeacon?.(
+        url,
+        new Blob([body], { type: "application/json" }),
+      );
+    } catch {
+      /* nothing we can do */
+    }
+  }
+}
+
 interface RequestTokenArgs {
   apiUrl: string;
   embedId: string;

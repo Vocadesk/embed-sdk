@@ -4,7 +4,7 @@
 import { DEFAULT_API_URL, DEFAULT_WSS_URL } from "./config.js";
 import { getBrowserId } from "./browser-id.js";
 import { StateMachine, type State } from "./state.js";
-import { requestToken, TokenError } from "./api.js";
+import { releaseSlot, requestToken, TokenError } from "./api.js";
 import { WsClient } from "./ws.js";
 import { mountShadow, type RenderHandle } from "./ui/render.js";
 import { startCapture, type CaptureSession, isAudioSupported } from "./audio/capture.js";
@@ -46,6 +46,13 @@ export class Embed implements EmbedHandle {
   private destroyed = false;
   private lastError: { code: ErrorCode; message: string } | null = null;
   private agentEnding = false;
+  /**
+   * True between `tokens` succeeding and `release` firing. The Vapi
+   * branch has no server-side teardown signal, so the SDK is the only
+   * thing that can free the gateway's concurrency slot.
+   */
+  private slotHeld = false;
+  private readonly onPageHide = () => this.releaseSlotIfHeld();
 
   constructor(deps: EmbedDeps) {
     // Per the W3C spec, attachShadow() only works on a fixed set of elements
@@ -74,11 +81,15 @@ export class Embed implements EmbedHandle {
     );
 
     this.machine.on((next, prev) => this.onStateChanged(next, prev));
+
+    // sendBeacon-style release on browser close / tab switch away.
+    window.addEventListener("pagehide", this.onPageHide);
   }
 
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
+    window.removeEventListener("pagehide", this.onPageHide);
     this.teardownCall("destroy");
     this.ui.destroy();
   }
@@ -192,6 +203,7 @@ export class Embed implements EmbedHandle {
       this.fail(code, msg);
       return;
     }
+    this.slotHeld = true;
 
     // Legacy embeds: hand off to Vapi. Different transport entirely — no
     // WS, no JWT, no PCM piping. The capture + playback we just set up are
@@ -328,6 +340,17 @@ export class Embed implements EmbedHandle {
     }
     this.agentEnding = false;
     this.ui.setMeter(0);
+    this.releaseSlotIfHeld();
+  }
+
+  private releaseSlotIfHeld(): void {
+    if (!this.slotHeld) return;
+    this.slotHeld = false;
+    releaseSlot({
+      apiUrl: this.options.apiUrl ?? DEFAULT_API_URL,
+      embedId: this.options.embedId,
+      browserId: getBrowserId(),
+    });
   }
 
   private startTimer(): void {
