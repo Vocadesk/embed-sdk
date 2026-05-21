@@ -4,7 +4,10 @@ import { gzipSync } from "node:zlib";
 import { readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 
-const LIMIT_GZIP_BYTES = 25 * 1024;
+// Budget covers the @vapi-ai/web SDK because Vite IIFE format bundles
+// dynamic imports into the main file (no code-splitting). 150 KB gz is
+// roughly: ~20 KB core SDK + ~120 KB Vapi web client + headroom.
+const LIMIT_GZIP_BYTES = 150 * 1024;
 
 const file = resolve(process.cwd(), "dist/vocadesk.min.js");
 const buf = readFileSync(file);

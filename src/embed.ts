@@ -200,7 +200,7 @@ export class Embed implements EmbedHandle {
     if (tokenRes.provider === "vapi") {
       this.capture?.stop();
       this.capture = null;
-      this.playback?.close();
+      this.playback?.stop();
       this.playback = null;
       try {
         const { startVapiCall } = await import("./vapi-driver.js");
