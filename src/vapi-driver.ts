@@ -71,7 +71,6 @@ export async function startVapiCall(args: {
     // string, or an object like { error, errorMsg, message, type }.
     // Always log the raw payload so the page console has the truth even
     // if our extractor falls back to "Vapi error".
-    // eslint-disable-next-line no-console
     console.error("[vocadesk] Vapi error event:", ...payload);
     args.handlers.onError(extractVapiErrorMessage(payload));
   });
