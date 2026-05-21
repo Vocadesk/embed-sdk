@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { requestToken, TokenError } from "../../src/api.js";
+import { releaseSlot, requestToken, TokenError } from "../../src/api.js";
 
 describe("requestToken", () => {
   const originalFetch = global.fetch;
@@ -117,5 +117,39 @@ describe("requestToken", () => {
     await expect(
       requestToken({ apiUrl: "https://x", embedId: "e", browserId: "b" }),
     ).rejects.toMatchObject({ code: "token_failed" });
+  });
+});
+
+describe("releaseSlot", () => {
+  const originalFetch = global.fetch;
+
+  beforeEach(() => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 204 });
+  });
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it("POSTs to /v1/release with keepalive and the embedId+browserId", () => {
+    releaseSlot({
+      apiUrl: "https://api.example.com",
+      embedId: "emb_release_1",
+      browserId: "br_release_1",
+    });
+    const call = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    expect(call[0]).toBe("https://api.example.com/v1/release");
+    expect(call[1].method).toBe("POST");
+    expect(call[1].keepalive).toBe(true);
+    expect(JSON.parse(call[1].body)).toEqual({
+      embedId: "emb_release_1",
+      browserId: "br_release_1",
+    });
+  });
+
+  it("does not throw when fetch rejects (best-effort fire-and-forget)", () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("offline"));
+    expect(() =>
+      releaseSlot({ apiUrl: "https://x", embedId: "e", browserId: "b" }),
+    ).not.toThrow();
   });
 });
