@@ -6,18 +6,18 @@ A drop-in JavaScript snippet that turns any HTML element into a voice call butto
 
 ```html
 <script
-  src="https://cdn.vocadesk.com/embed/v0.1.0/vocadesk.min.js"
-  integrity="sha384-PLACEHOLDER_REPLACE_WITH_RELEASE_HASH"
+  src="https://cdn.vocadesk.com/embed/v0.3.3/vocadesk.min.js"
+  integrity="sha384-2hUyP+F2pwV8iaOusy65jyueF/mT4wmmrm8m3+CzAydrMxkM9WjfhI0b5g25TLCI"
   crossorigin="anonymous"
   defer
 ></script>
 
-<button data-vocadesk-embed="emb_abc123" style="width:220px;height:60px">
+<div data-vocadesk-embed="emb_abc123" style="width:220px;height:60px">
   Talk to us
-</button>
+</div>
 ```
 
-That's it. Drop in the `<script>` tag, drop in a `<button>` (or any element) with `data-vocadesk-embed`, and the SDK auto-binds on `DOMContentLoaded`.
+That's it. Drop in the `<script>` tag, drop in a `<div>` (or any element) with `data-vocadesk-embed`, and the SDK auto-binds on `DOMContentLoaded`.
 
 ## What you get
 
