@@ -41,30 +41,29 @@ jobs:
           echo "sri=sha384-${HASH}" >> "$GITHUB_OUTPUT"
           echo "Computed SRI: sha384-${HASH}"
 
-      # Upload via the S3-compatible R2 API. Requires:
-      #   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME
+      # Upload via wrangler. Single secret needed:
+      #   CLOUDFLARE_API_TOKEN — a token with "Workers R2 Storage:Edit" scope
+      #   R2_BUCKET_NAME       — bucket name (e.g. "vocadesk-embed-sdk")
       - name: Upload to Cloudflare R2
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: auto
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           R2_BUCKET: ${{ secrets.R2_BUCKET_NAME }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
-          ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
           PREFIX="embed/v${VERSION}"
-          aws --endpoint-url "$ENDPOINT" s3 cp \
-            dist/vocadesk.min.js \
-            "s3://${R2_BUCKET}/${PREFIX}/vocadesk.min.js" \
-            --cache-control "public, max-age=31536000, immutable" \
-            --content-type "application/javascript"
-          aws --endpoint-url "$ENDPOINT" s3 cp \
-            dist/vocadesk.min.js.map \
-            "s3://${R2_BUCKET}/${PREFIX}/vocadesk.min.js.map" \
-            --cache-control "public, max-age=31536000, immutable" \
-            --content-type "application/json"
+          npx --yes wrangler@4 r2 object put \
+            "${R2_BUCKET}/${PREFIX}/vocadesk.min.js" \
+            --file dist/vocadesk.min.js \
+            --remote \
+            --content-type "application/javascript" \
+            --cache-control "public, max-age=31536000, immutable"
+          npx --yes wrangler@4 r2 object put \
+            "${R2_BUCKET}/${PREFIX}/vocadesk.min.js.map" \
+            --file dist/vocadesk.min.js.map \
+            --remote \
+            --content-type "application/json" \
+            --cache-control "public, max-age=31536000, immutable"
 
       - name: Print SRI hash + URL for release notes
         run: |
@@ -73,7 +72,7 @@ jobs:
 
           **CDN URL**
           \`\`\`
-          https://cdn.vocadesk.com/embed/v${{ steps.version.outputs.version }}/vocadesk.min.js
+          https://pub-244bc90b117f495090f892d654218952.r2.dev/embed/v${{ steps.version.outputs.version }}/vocadesk.min.js
           \`\`\`
 
           **SRI hash**
@@ -84,7 +83,7 @@ jobs:
           **Snippet**
           \`\`\`html
           <script
-            src="https://cdn.vocadesk.com/embed/v${{ steps.version.outputs.version }}/vocadesk.min.js"
+            src="https://pub-244bc90b117f495090f892d654218952.r2.dev/embed/v${{ steps.version.outputs.version }}/vocadesk.min.js"
             integrity="${{ steps.sri.outputs.sri }}"
             crossorigin="anonymous"
             defer
@@ -100,7 +99,7 @@ jobs:
             ## CDN URL
 
             ```
-            https://cdn.vocadesk.com/embed/v${{ steps.version.outputs.version }}/vocadesk.min.js
+            https://pub-244bc90b117f495090f892d654218952.r2.dev/embed/v${{ steps.version.outputs.version }}/vocadesk.min.js
             ```
 
             ## SRI hash
@@ -113,7 +112,7 @@ jobs:
 
             ```html
             <script
-              src="https://cdn.vocadesk.com/embed/v${{ steps.version.outputs.version }}/vocadesk.min.js"
+              src="https://pub-244bc90b117f495090f892d654218952.r2.dev/embed/v${{ steps.version.outputs.version }}/vocadesk.min.js"
               integrity="${{ steps.sri.outputs.sri }}"
               crossorigin="anonymous"
               defer
