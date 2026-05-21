@@ -41,29 +41,43 @@ jobs:
           echo "sri=sha384-${HASH}" >> "$GITHUB_OUTPUT"
           echo "Computed SRI: sha384-${HASH}"
 
-      # Upload via wrangler. Single secret needed:
-      #   CLOUDFLARE_API_TOKEN — a token with "Workers R2 Storage:Edit" scope
-      #   R2_BUCKET_NAME       — bucket name (e.g. "vocadesk-embed-sdk")
+      # Upload via the Cloudflare R2 REST API directly. Secrets needed:
+      #   CLOUDFLARE_API_TOKEN — token with "Workers R2 Storage:Edit"
+      #   CLOUDFLARE_ACCOUNT_ID — account id (from dashboard URL)
+      #   R2_BUCKET_NAME — e.g. "vocadesk-embed-sdk"
+      #
+      # The REST endpoint (PUT /accounts/{id}/r2/buckets/{name}/objects/{key})
+      # works with the same token used for everything else — no extra
+      # User Details:Read permission that wrangler insists on, and no
+      # S3-compatible access key minting (which needs Account Settings:Edit).
       - name: Upload to Cloudflare R2
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_BUCKET: ${{ secrets.R2_BUCKET_NAME }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
+          BASE="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${R2_BUCKET}/objects"
           PREFIX="embed/v${VERSION}"
-          npx --yes wrangler@4 r2 object put \
-            "${R2_BUCKET}/${PREFIX}/vocadesk.min.js" \
-            --file dist/vocadesk.min.js \
-            --remote \
-            --content-type "application/javascript" \
-            --cache-control "public, max-age=31536000, immutable"
-          npx --yes wrangler@4 r2 object put \
-            "${R2_BUCKET}/${PREFIX}/vocadesk.min.js.map" \
-            --file dist/vocadesk.min.js.map \
-            --remote \
-            --content-type "application/json" \
-            --cache-control "public, max-age=31536000, immutable"
+          upload() {
+            local file="$1"; local key="$2"; local ctype="$3"
+            local code
+            code=$(curl -sS -o /tmp/r2.body -w "%{http_code}" -X PUT \
+              -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+              -H "Content-Type: ${ctype}" \
+              -H "Cache-Control: public, max-age=31536000, immutable" \
+              --data-binary "@${file}" \
+              "${BASE}/${key}")
+            if [[ "$code" != "200" && "$code" != "201" ]]; then
+              echo "Upload failed for ${key}: HTTP ${code}"
+              cat /tmp/r2.body
+              exit 1
+            fi
+            echo "Uploaded ${key}"
+          }
+          upload dist/vocadesk.min.js "${PREFIX}/vocadesk.min.js" "application/javascript"
+          upload dist/vocadesk.min.js.map "${PREFIX}/vocadesk.min.js.map" "application/json"
 
       - name: Print SRI hash + URL for release notes
         run: |
