@@ -1,17 +1,17 @@
-# Vocadesk web-call embed — user guide (app.vocadesk.com)
+# Vocadesk web-call embed — user guide (staging.vocadesk.com)
 
 A "web call" lets a visitor on any website press a button and have a live voice conversation with one of your AI agents — same kind of call as a phone call, just in the browser.
 
 This guide takes you from zero to a working call on an external site in about 10 minutes. No coding required beyond pasting an HTML snippet.
 
-> **Which dashboard am I on?** This guide is for the original Vocadesk dashboard at **https://app.vocadesk.com**. If you log in at `https://staging.vocadesk.com` (the new dashboard), use [USER_GUIDE_FUTURE.md](USER_GUIDE_FUTURE.md) instead. The customer-facing snippet, the SDK, and the call experience are identical between the two — only the operator dashboard differs.
+> **Which dashboard am I on?** This guide is for the **new** Vocadesk dashboard at **https://staging.vocadesk.com**. If you log in at `https://app.vocadesk.com` (the original dashboard), use [USER_GUIDE.md](USER_GUIDE.md) instead. The customer-facing snippet, the SDK, and the call experience are identical between the two — only the operator dashboard differs.
 
 ---
 
 ## Before you start
 
 You need:
-- A **Vocadesk operator account** (log in at https://app.vocadesk.com).
+- A **Vocadesk operator account** (log in at https://staging.vocadesk.com).
 - At least **one configured agent** — the one visitors will talk to.
 - **The website** where you want the button to appear — you need permission to edit its HTML (or to add code via a CMS like WordPress, Webflow, Squarespace, etc.).
 - The website must use **HTTPS** (browsers refuse to give microphone access on plain HTTP). Most modern hosts give you HTTPS automatically.
@@ -20,7 +20,7 @@ You need:
 
 ## Step 1 — Create an embed in the dashboard
 
-1. Go to https://app.vocadesk.com and log in.
+1. Go to https://staging.vocadesk.com and log in.
 2. From the side menu choose **Embeds**.
 3. Click **New embed** (top right).
 4. Fill in the form:
@@ -35,7 +35,7 @@ You need:
 
 The page now shows your embed with a unique ID that looks like `emb_8sJ4kP3qXyZ…`.
 
-⚠ **The allowed origins matter.** If the page that hosts the button is on a domain you did not add here, the button will refuse to make calls. You can add more origins later by editing the embed.
+⚠ **The allowed origins matter**. If the page that hosts the button is on a domain you did not add here, the button will refuse to make calls. You can add more origins later by editing the embed.
 
 ---
 
@@ -99,8 +99,8 @@ That's the whole experience for visitors. No app to install, no login required, 
 
 After the call ends:
 
-1. Go to **Calls** in the Vocadesk dashboard at https://app.vocadesk.com.
-2. Filter by **Call type: web** (or just sort by date — your recent call will be near the top).
+1. Go to **Calls** in the Vocadesk dashboard.
+2. Filter by **Channel: web** (or just sort by date — your recent call will be near the top).
 3. You'll see:
    - Caller (browser ID — anonymous, no PII)
    - Duration
