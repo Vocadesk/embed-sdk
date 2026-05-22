@@ -31,6 +31,7 @@ You need:
      https://acme.com
      https://www.acme.com
      ```
+     Testing locally before you go live? Click **+ Add localhost** in the dialog — it appends `http://localhost:3000`, `:5173`, and `:8080` so you can serve a test page from `python3 -m http.server` or similar and have the button work. Remove these origins before going to production.
    - **Require Turnstile (bot challenge)** — leave **off** for normal use. Only turn on if you start seeing bot abuse.
 6. Click **Create**.
 
@@ -59,6 +60,8 @@ On the embed's detail page (or by clicking the embed in the list) you'll see a *
 
 Click **Copy snippet**. The `emb_…` value is already filled in for you — that's *your* embed ID.
 
+> **Want to try it before touching your website?** Click the **🎤 Test it** button on the embed detail page. It opens a hosted preview at `embed.vocadesk.com/preview/<your-embed-id>` with the button already wired up. Click the button on that page to make a real call to your agent and confirm everything works.
+
 ---
 
 ## Step 3 — Paste it into your website
@@ -74,7 +77,7 @@ The snippet has two parts. They can be placed anywhere on the page, as long as b
 |---|---|
 | **Raw HTML / static site** | Open the .html file in your editor, paste both lines before `</body>` (the easiest), or split them between `<head>` (script) and the page body (button). |
 | **WordPress** | Use the **Custom HTML** block in the page editor. Paste the snippet inside. |
-| **Webflow** | Settings → Custom Code → "Before `</body>` tag" → paste the `<script>` line. Then on the page, add an **Embed** element and paste just the `<button>` line. |
+| **Webflow** | Settings → Custom Code → "Before `</body>` tag" → paste the `<script>` line. Then on the page, add an **Embed** element and paste just the `<div data-vocadesk-embed=…>` line. |
 | **Squarespace / Wix** | Insert a **Code** / **Custom HTML** block on the page and paste the whole snippet there. |
 | **Notion** | Doesn't support arbitrary JS — won't work. |
 
@@ -90,7 +93,7 @@ Save and publish.
 4. The browser will ask for **microphone permission**. Click **Allow**.
 5. The button changes to **Connecting…**, then **active** with a tiny live timer and animated bars showing your mic level.
 6. Talk to the agent. It will reply through your speakers.
-7. End the call by clicking the **×** inside the button, by saying something that triggers a hangup ("goodbye, thanks"), or by closing the tab.
+7. End the call by clicking the **×** inside the button, by closing the tab, or by letting the agent end the call (if it's configured to do so when the conversation is done).
 
 That's the whole experience for visitors. No app to install, no login required, no setup.
 
@@ -100,16 +103,16 @@ That's the whole experience for visitors. No app to install, no login required, 
 
 After the call ends:
 
-1. Go to **Calls** in the Vocadesk dashboard.
-2. Filter by **Channel: web** (or just sort by date — your recent call will be near the top).
-3. You'll see:
-   - Caller (browser ID — anonymous, no PII)
+1. Go to **Calls** in the Vocadesk dashboard at https://staging.vocadesk.com.
+2. Your recent call will be near the top of the list (sorted by time).
+3. Click it to open the detail view, which includes:
    - Duration
+   - Sentiment
+   - Status
    - Transcript
    - Recording (if recording is enabled on the agent)
-   - Cost
 
-Web calls show up alongside phone calls and test calls. They're tagged with the **embed ID** so you can group calls per website.
+Web calls show up alongside phone calls.
 
 ---
 
