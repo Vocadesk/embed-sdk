@@ -6,8 +6,8 @@ A drop-in JavaScript snippet that turns any HTML element into a voice call butto
 
 ```html
 <script
-  src="https://cdn.vocadesk.com/embed/v0.3.6/vocadesk.min.js"
-  integrity="sha384-QMeE2n9nnEwkH3PW20NfOK1HWP9LWDFk8Zk8uhILQOAX1JgPNGIqTv/Sr2dJSbb2"
+  src="https://cdn.vocadesk.com/embed/v0.3.7/vocadesk.min.js"
+  integrity="sha384-saHP/HU2OeJkKxQtRHIHO/JmE4mtQFpZVPT/JBAH7dTe54kpQiWblFkGugSX/LRv"
   crossorigin="anonymous"
   defer
 ></script>
