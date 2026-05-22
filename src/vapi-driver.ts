@@ -25,7 +25,10 @@ export interface VapiDriver {
 }
 
 interface VapiClient {
-  start(assistantId: string): Promise<unknown>;
+  start(
+    assistantId: string,
+    assistantOverrides?: { metadata?: Record<string, unknown> },
+  ): Promise<unknown>;
   stop(): Promise<void>;
   on(event: string, listener: (...args: unknown[]) => void): unknown;
 }
@@ -41,6 +44,12 @@ interface VapiCtor {
 export async function startVapiCall(args: {
   publicKey: string;
   assistantId: string;
+  /**
+   * Vocadesk embed ID, forwarded to Vapi as `metadata.embedId`. vocaback's
+   * webhook handler uses this to classify the call as callType='web'
+   * (rather than 'test', which is reserved for in-dashboard test calls).
+   */
+  embedId: string;
   handlers: VapiDriverHandlers;
 }): Promise<VapiDriver> {
   let mod: unknown;
@@ -76,7 +85,12 @@ export async function startVapiCall(args: {
   });
 
   try {
-    await vapi.start(args.assistantId);
+    await vapi.start(args.assistantId, {
+      metadata: {
+        source: "vocadesk-embed",
+        embedId: args.embedId,
+      },
+    });
   } catch (err) {
     args.handlers.onError(
       err instanceof Error ? err.message : "Vapi call failed to start",

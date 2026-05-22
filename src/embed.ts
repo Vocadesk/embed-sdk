@@ -219,6 +219,7 @@ export class Embed implements EmbedHandle {
         const driver = await startVapiCall({
           publicKey: tokenRes.vapiPublicKey,
           assistantId: tokenRes.vapiAssistantId,
+          embedId: this.options.embedId,
           handlers: {
             onCallStarted: () => {
               if (this.machine.state === "connecting") {
