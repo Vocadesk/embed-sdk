@@ -11,25 +11,48 @@ describe("requestToken", () => {
     global.fetch = originalFetch;
   });
 
-  it("posts JSON and returns token response", async () => {
+  it("posts JSON and returns pipecat token response", async () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ token: "jwt", wssUrl: "wss://x/y", expiresAt: "2099-01-01T00:00:00Z" }),
+      json: async () => ({
+        provider: "pipecat",
+        token: "jwt",
+        dispatchUrl: "https://voice.example.com/pipecat/embed",
+        expiresAt: "2099-01-01T00:00:00Z",
+      }),
     });
     const res = await requestToken({
       apiUrl: "https://api.example.com",
       embedId: "emb_1",
       browserId: "br_1",
     });
-    expect(res.provider).toBe("voice-runtime2");
-    if (res.provider !== "voice-runtime2") throw new Error("unreachable");
+    expect(res.provider).toBe("pipecat");
+    if (res.provider !== "pipecat") throw new Error("unreachable");
     expect(res.token).toBe("jwt");
-    expect(res.wssUrl).toBe("wss://x/y");
+    expect(res.dispatchUrl).toBe("https://voice.example.com/pipecat/embed");
     const call = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0]!;
     expect(call[0]).toBe("https://api.example.com/v1/tokens");
     const body = JSON.parse(call[1].body) as Record<string, unknown>;
     expect(body).toEqual({ embedId: "emb_1", browserId: "br_1" });
+  });
+
+  it("accepts pipecat response without explicit provider field (backwards-compat)", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        token: "jwt",
+        dispatchUrl: "https://voice.example.com/pipecat/embed",
+        expiresAt: "2099-01-01T00:00:00Z",
+      }),
+    });
+    const res = await requestToken({
+      apiUrl: "https://api.example.com",
+      embedId: "emb_1",
+      browserId: "br_1",
+    });
+    expect(res.provider).toBe("pipecat");
   });
 
   it("returns vapi-shape response when provider='vapi'", async () => {
@@ -57,7 +80,7 @@ describe("requestToken", () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ token: "t", wssUrl: "wss://x", expiresAt: "" }),
+      json: async () => ({ provider: "pipecat", token: "t", dispatchUrl: "https://x", expiresAt: "" }),
     });
     await requestToken({
       apiUrl: "https://api.example.com",
@@ -74,7 +97,7 @@ describe("requestToken", () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ token: "t", wssUrl: "wss://x", expiresAt: "" }),
+      json: async () => ({ provider: "pipecat", token: "t", dispatchUrl: "https://x", expiresAt: "" }),
     });
     await requestToken({
       apiUrl: "https://api.example.com///",
@@ -151,5 +174,38 @@ describe("releaseSlot", () => {
     expect(() =>
       releaseSlot({ apiUrl: "https://x", embedId: "e", browserId: "b" }),
     ).not.toThrow();
+  });
+
+  it("logs a console.warn when fetch rejects", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("offline"));
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    releaseSlot({ apiUrl: "https://x", embedId: "emb_test", browserId: "b" });
+    // Flush the microtask queue so the .catch handler runs.
+    await new Promise((r) => setTimeout(r, 0));
+    expect(warnSpy).toHaveBeenCalledWith(
+      "[vocadesk] slot release error:",
+      expect.any(Error),
+    );
+    warnSpy.mockRestore();
+  });
+
+  it("logs a console.warn when fetch returns a non-ok status", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ ok: false, status: 403 });
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    releaseSlot({ apiUrl: "https://x", embedId: "emb_test", browserId: "b" });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("[vocadesk] slot release failed: HTTP 403"),
+    );
+    warnSpy.mockRestore();
+  });
+
+  it("does not warn when fetch succeeds", async () => {
+    // fetch mock already set to { ok: true, status: 204 } in beforeEach
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    releaseSlot({ apiUrl: "https://x", embedId: "e", browserId: "b" });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(warnSpy).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
   });
 });

@@ -17,16 +17,16 @@ export interface EmbedHandle {
 
 /**
  * JSON body returned by POST /v1/tokens. Tagged union by `provider`:
- *  - 'voice-runtime2': v2 embeds. SDK opens a WSS handshake to wssUrl
- *    with the JWT in the query string.
+ *  - 'pipecat': v2 embeds. SDK POSTs the JWT to dispatchUrl, gets back
+ *    LiveKit room URL + token, joins the room via livekit-client.
  *  - 'vapi': legacy embeds. SDK loads @vapi-ai/web and calls
  *    `new Vapi(vapiPublicKey).start(vapiAssistantId)`.
  */
 export type TokenResponse =
   | {
-      provider: "voice-runtime2";
+      provider: "pipecat";
       token: string;
-      wssUrl: string;
+      dispatchUrl: string;
       expiresAt: string;
     }
   | {

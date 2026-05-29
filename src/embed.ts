@@ -1,15 +1,12 @@
-// One Embed instance per host element. Owns the state machine, audio
-// pipelines, WebSocket, and UI render handle.
+// One Embed instance per host element. Owns the state machine, the active
+// call driver (pipecat or legacy vapi), and the UI render handle. The
+// driver itself manages audio capture/playback over WebRTC.
 
-import { DEFAULT_API_URL, DEFAULT_WSS_URL } from "./config.js";
+import { DEFAULT_API_URL } from "./config.js";
 import { getBrowserId } from "./browser-id.js";
 import { StateMachine, type State } from "./state.js";
 import { releaseSlot, requestToken, TokenError } from "./api.js";
-import { WsClient } from "./ws.js";
 import { mountShadow, type RenderHandle } from "./ui/render.js";
-import { startCapture, type CaptureSession, isAudioSupported } from "./audio/capture.js";
-import { startPlayback, type PlaybackSession } from "./audio/playback.js";
-import { rmsToBars } from "./audio/meter.js";
 import type { EmbedHandle, ErrorCode, MountOptions } from "./types.js";
 
 type StartEvent = CustomEvent<Record<string, never>>;
@@ -35,21 +32,17 @@ export class Embed implements EmbedHandle {
   private readonly options: MountOptions;
   private readonly machine = new StateMachine();
   private readonly ui: RenderHandle;
-  private capture: CaptureSession | null = null;
-  private playback: PlaybackSession | null = null;
-  private ws: WsClient | null = null;
-  /** Set only for legacy (Vapi) calls; null on v2 calls. */
-  private vapiDriver: { stop(): Promise<void> } | null = null;
+  /** Active driver for the current call (pipecat or legacy vapi). */
+  private driver: { stop(): Promise<void> } | null = null;
   private callStartedAt: number | null = null;
   private timerInterval: number | null = null;
   private resetTimeout: number | null = null;
   private destroyed = false;
   private lastError: { code: ErrorCode; message: string } | null = null;
-  private agentEnding = false;
   /**
-   * True between `tokens` succeeding and `release` firing. The Vapi
-   * branch has no server-side teardown signal, so the SDK is the only
-   * thing that can free the gateway's concurrency slot.
+   * True between `tokens` succeeding and `release` firing. Neither pipecat
+   * nor Vapi has a guaranteed server-side teardown signal, so the SDK is
+   * the source of truth for freeing the gateway's concurrency slot.
    */
   private slotHeld = false;
   private readonly onPageHide = () => this.releaseSlotIfHeld();
@@ -145,26 +138,19 @@ export class Embed implements EmbedHandle {
   // --- call lifecycle --------------------------------------------------
 
   private async startCall(): Promise<void> {
-    if (!isAudioSupported()) {
-      this.fail("mic_unavailable", "Audio not supported in this browser");
-      return;
-    }
-
-    // Mic permission first. Failing here gives a clear error before we try
-    // anything network-related.
+    // Mic permission first. We don't capture audio ourselves on the pipecat
+    // path (LiveKit does that), but pre-prompting here gives the customer
+    // an actionable error before we hit the network. The tracks are
+    // immediately stopped — LiveKit re-acquires the mic once the room is
+    // connected (no second permission prompt, the grant is sticky for the
+    // page session).
     try {
-      this.capture = await startCapture({
-        onAudio: (b64) => {
-          if (this.ws?.isOpen && !this.agentEnding) this.ws.sendAudio(b64);
-        },
-        onMeter: (rms) => {
-          if (this.machine.state === "active") this.ui.setMeter(rmsToBars(rms));
-        },
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       });
+      for (const t of stream.getTracks()) t.stop();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Mic access failed";
-      // Distinguish denial vs other failures by name (NotAllowedError vs
-      // NotFoundError / NotReadableError).
       const name = err instanceof Error ? err.name : "";
       if (name === "NotAllowedError" || name === "SecurityError") {
         this.machine.send("mic_failed");
@@ -177,14 +163,6 @@ export class Embed implements EmbedHandle {
     }
 
     this.machine.send("mic_granted");
-
-    // Token + WS handshake.
-    try {
-      this.playback = await startPlayback();
-    } catch (err) {
-      this.fail("mic_unavailable", err instanceof Error ? err.message : "Playback init failed");
-      return;
-    }
 
     const apiUrl = this.options.apiUrl ?? DEFAULT_API_URL;
     const browserId = getBrowserId();
@@ -206,102 +184,69 @@ export class Embed implements EmbedHandle {
     this.slotHeld = true;
 
     // Legacy embeds: hand off to Vapi. Different transport entirely — no
-    // WS, no JWT, no PCM piping. The capture + playback we just set up are
-    // not needed for the Vapi path (Vapi opens its own WebRTC stream), so
-    // tear them down before starting Vapi to avoid the mic being held twice.
+    // gateway WS, no JWT, no PCM piping. Vapi opens its own WebRTC stream
+    // and manages mic/playback itself.
     if (tokenRes.provider === "vapi") {
-      this.capture?.stop();
-      this.capture = null;
-      this.playback?.stop();
-      this.playback = null;
       try {
         const { startVapiCall } = await import("./vapi-driver.js");
-        const driver = await startVapiCall({
+        this.driver = await startVapiCall({
           publicKey: tokenRes.vapiPublicKey,
           assistantId: tokenRes.vapiAssistantId,
           embedId: this.options.embedId,
-          handlers: {
-            onCallStarted: () => {
-              if (this.machine.state === "connecting") {
-                this.machine.send("ws_open_and_started");
-              }
-            },
-            onCallEnded: () => {
-              // The v2 path relies on the WS close to fire "ws_closed"
-              // (ending → ended). Vapi has no WS, so we have to drive
-              // both transitions ourselves — otherwise a user-initiated
-              // hangup gets stuck on "ending" with a busy spinner.
-              if (this.machine.state === "active") {
-                this.machine.send("hangup"); // active → ending
-              }
-              if (this.machine.state === "ending") {
-                this.machine.send("ws_closed"); // ending → ended
-              }
-              this.teardownCall("server_end");
-            },
-            onError: (msg) => this.fail("ws_failed", msg),
-          },
+          handlers: this.makeDriverHandlers(),
         });
-        this.vapiDriver = driver;
-        // No extra state transition here — the Vapi driver's onCallStarted
-        // fires "ws_open_and_started" same as the v2 WS path, taking us
-        // from "connecting" → "active".
       } catch (err) {
         this.fail("ws_failed", err instanceof Error ? err.message : "Vapi failed");
       }
       return;
     }
 
-    const token = tokenRes.token;
-    const wssUrl = tokenRes.wssUrl || this.options.wssUrl || DEFAULT_WSS_URL;
+    // v2 embeds: pipecat / LiveKit. Browser POSTs the JWT to dispatchUrl,
+    // gets back LiveKit room credentials, and joins the room via
+    // livekit-client (loaded on-demand from CDN). LiveKit handles mic
+    // capture and remote audio playback over WebRTC.
+    try {
+      const { startPipecatCall } = await import("./pipecat-driver.js");
+      const driver = await startPipecatCall({
+        dispatchUrl: tokenRes.dispatchUrl,
+        token: tokenRes.token,
+        handlers: this.makeDriverHandlers(),
+      });
+      // If the user hung up or destroyed the embed while we were dispatching,
+      // bail out and tear the driver back down — don't leave it dangling.
+      if (this.destroyed || this.machine.state === "idle" || this.machine.state === "ended") {
+        void driver.stop();
+        return;
+      }
+      this.driver = driver;
+    } catch (err) {
+      this.fail("ws_failed", err instanceof Error ? err.message : "Pipecat failed");
+    }
+  }
 
-    this.ws = new WsClient({
-      wssUrl,
-      token,
-      handlers: {
-        onStarted: () => {
-          if (this.machine.state === "connecting") {
-            this.machine.send("ws_open_and_started");
-          }
-        },
-        onAudio: (b64) => this.playback?.enqueue(b64),
-        onTranscript: () => {
-          // Reserved for a future captions UI. We intentionally do not surface
-          // transcripts in the embed today.
-        },
-        onAgentEnding: () => {
-          // Agent has decided to hang up; stop sending mic audio so we don't
-          // accidentally re-trigger the model mid-goodbye.
-          this.agentEnding = true;
-        },
-        onEndCall: () => {
-          if (this.machine.state === "active") {
-            this.machine.send("hangup");
-          }
-          this.teardownCall("server_end");
-        },
-        onClear: () => this.playback?.clear(),
-        onTransferCall: (_number: string) => {
-          // Embed does not place outbound PSTN calls. Treat as a hard hangup
-          // so the UI doesn't sit there forever; operator can configure their
-          // own routing if they want transfer behaviour.
-          if (this.machine.state === "active") this.machine.send("hangup");
-          this.teardownCall("server_end");
-        },
-        onError: (message) => {
-          this.fail("ws_failed", message);
-        },
-        onClosed: () => {
-          if (this.machine.state === "ending") {
-            this.machine.send("ws_closed");
-          } else if (this.machine.state === "active" || this.machine.state === "connecting") {
-            // Unexpected close.
-            this.fail("ws_failed", "Connection closed unexpectedly");
-          }
-        },
+  /**
+   * Shared driver-handler factory. Both pipecat and vapi drivers expose
+   * the same callback surface — bridging them into the embed's state
+   * machine is identical.
+   */
+  private makeDriverHandlers() {
+    return {
+      onCallStarted: () => {
+        if (this.machine.state === "connecting") {
+          this.machine.send("ws_open_and_started");
+        }
       },
-    });
-    this.ws.connect();
+      onCallEnded: () => {
+        if (this.machine.state === "active") {
+          this.machine.send("hangup"); // active → ending
+        }
+        if (this.machine.state === "ending") {
+          this.machine.send("ws_closed"); // ending → ended
+        }
+        this.teardownCall("server_end");
+      },
+      onError: (msg: string) => this.fail("ws_failed", msg),
+    };
   }
 
   private fail(code: ErrorCode, message: string): void {
@@ -330,23 +275,10 @@ export class Embed implements EmbedHandle {
       clearInterval(this.timerInterval);
       this.timerInterval = null;
     }
-    if (this.ws) {
-      try { this.ws.close(); } catch { /* ignore */ }
-      this.ws = null;
+    if (this.driver) {
+      try { void this.driver.stop(); } catch { /* ignore */ }
+      this.driver = null;
     }
-    if (this.vapiDriver) {
-      try { void this.vapiDriver.stop(); } catch { /* ignore */ }
-      this.vapiDriver = null;
-    }
-    if (this.capture) {
-      try { this.capture.stop(); } catch { /* ignore */ }
-      this.capture = null;
-    }
-    if (this.playback) {
-      try { this.playback.stop(); } catch { /* ignore */ }
-      this.playback = null;
-    }
-    this.agentEnding = false;
     this.ui.setMeter(0);
     this.releaseSlotIfHeld();
   }

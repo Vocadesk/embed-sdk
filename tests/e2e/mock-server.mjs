@@ -2,7 +2,7 @@
 // Mock embed-gateway + voice-runtime backend used by both Playwright tests and
 // `npm run dev`. Two ports:
 //
-//   8799  HTTP   POST /v1/tokens          → returns {token, wssUrl, expiresAt}
+//   8799  HTTP   POST /v1/tokens          → returns pipecat token {provider, token, dispatchUrl, expiresAt}
 //                GET  /__ready            → 200 OK once both listeners are up
 //                GET  /__last-recv        → last text WS frame the mock saw
 //                GET  /  (any file)       → serves dist/ + examples/
@@ -91,8 +91,9 @@ const httpServer = http.createServer(async (req, res) => {
       }
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
+        provider: "pipecat",
         token: "mock-jwt-" + Math.random().toString(36).slice(2),
-        wssUrl: `ws://127.0.0.1:${WSS_PORT}/embed/v1/call`,
+        dispatchUrl: `http://127.0.0.1:${HTTP_PORT}/pipecat/embed`,
         expiresAt: new Date(Date.now() + 60_000).toISOString(),
       }));
     });

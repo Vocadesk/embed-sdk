@@ -1,7 +1,8 @@
 // embed-gateway token endpoint.
 //
-// On 200 we get { token, wssUrl, expiresAt }. The JWT has exp=+60s so the
-// caller should connect to wssUrl immediately and not stash this for later.
+// On 200 we get a tagged-union response. For pipecat embeds it carries
+// { token, dispatchUrl, expiresAt }. The JWT has exp=+60s so the caller
+// should hit dispatchUrl immediately and not stash this for later.
 
 import type { TokenResponse } from "./types.js";
 
@@ -29,7 +30,15 @@ export function releaseSlot(args: {
       headers: { "Content-Type": "application/json" },
       body,
       keepalive: true,
-    }).catch(() => undefined);
+    })
+      .then((res) => {
+        if (!res.ok) {
+          console.warn(`[vocadesk] slot release failed: HTTP ${res.status} — embedId=${args.embedId}`);
+        }
+      })
+      .catch((err: unknown) => {
+        console.warn("[vocadesk] slot release error:", err);
+      });
   } catch {
     try {
       navigator.sendBeacon?.(
@@ -105,15 +114,14 @@ export async function requestToken(args: RequestTokenArgs): Promise<TokenRespons
       vapiAssistantId: body.vapiAssistantId,
     };
   }
-  // Default + explicit voice-runtime2 — keep accepting the old (untagged)
-  // shape so the SDK works against older gateway revisions during rollout.
-  if (typeof body.token !== "string" || typeof body.wssUrl !== "string") {
+  // v2 embeds: pipecat dispatch.
+  if (typeof body.token !== "string" || typeof body.dispatchUrl !== "string") {
     throw new TokenError(res.status, "token_failed", "Token response missing fields");
   }
   return {
-    provider: "voice-runtime2",
+    provider: "pipecat",
     token: body.token,
-    wssUrl: body.wssUrl,
+    dispatchUrl: body.dispatchUrl,
     expiresAt: typeof body.expiresAt === "string" ? body.expiresAt : "",
   };
 }
