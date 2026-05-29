@@ -16,24 +16,16 @@ export interface EmbedHandle {
 }
 
 /**
- * JSON body returned by POST /v1/tokens. Tagged union by `provider`:
- *  - 'pipecat': v2 embeds. SDK POSTs the JWT to dispatchUrl, gets back
- *    LiveKit room URL + token, joins the room via livekit-client.
- *  - 'vapi': legacy embeds. SDK loads @vapi-ai/web and calls
- *    `new Vapi(vapiPublicKey).start(vapiAssistantId)`.
+ * JSON body returned by POST /v1/tokens. The SDK POSTs the JWT to
+ * dispatchUrl, gets back LiveKit room URL + token, and joins the room
+ * via livekit-client.
  */
-export type TokenResponse =
-  | {
-      provider: "pipecat";
-      token: string;
-      dispatchUrl: string;
-      expiresAt: string;
-    }
-  | {
-      provider: "vapi";
-      vapiPublicKey: string;
-      vapiAssistantId: string;
-    };
+export interface TokenResponse {
+  provider: "pipecat";
+  token: string;
+  dispatchUrl: string;
+  expiresAt: string;
+}
 
 export type ErrorCode =
   | "mic_denied"

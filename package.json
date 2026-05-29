@@ -1,6 +1,6 @@
 {
   "name": "@vocadesk/embed-sdk",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Vocadesk browser embed — turn any HTML element into a voice call interface.",
   "private": true,
   "type": "module",
@@ -32,8 +32,5 @@
   },
   "engines": {
     "node": ">=20"
-  },
-  "dependencies": {
-    "@vapi-ai/web": "^2.5.2"
   }
 }

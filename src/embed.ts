@@ -1,6 +1,6 @@
 // One Embed instance per host element. Owns the state machine, the active
-// call driver (pipecat or legacy vapi), and the UI render handle. The
-// driver itself manages audio capture/playback over WebRTC.
+// pipecat / LiveKit driver, and the UI render handle. The driver itself
+// manages audio capture/playback over WebRTC.
 
 import { DEFAULT_API_URL } from "./config.js";
 import { getBrowserId } from "./browser-id.js";
@@ -32,7 +32,7 @@ export class Embed implements EmbedHandle {
   private readonly options: MountOptions;
   private readonly machine = new StateMachine();
   private readonly ui: RenderHandle;
-  /** Active driver for the current call (pipecat or legacy vapi). */
+  /** Active pipecat / LiveKit driver for the current call. */
   private driver: { stop(): Promise<void> } | null = null;
   private callStartedAt: number | null = null;
   private timerInterval: number | null = null;
@@ -40,9 +40,10 @@ export class Embed implements EmbedHandle {
   private destroyed = false;
   private lastError: { code: ErrorCode; message: string } | null = null;
   /**
-   * True between `tokens` succeeding and `release` firing. Neither pipecat
-   * nor Vapi has a guaranteed server-side teardown signal, so the SDK is
-   * the source of truth for freeing the gateway's concurrency slot.
+   * True between `tokens` succeeding and `release` firing. Pipecat has no
+   * guaranteed server-side teardown signal (the agent worker SREMs on
+   * call.ended, but a crash bypasses that), so the SDK is the canonical
+   * source for freeing the gateway's concurrency slot.
    */
   private slotHeld = false;
   private readonly onPageHide = () => this.releaseSlotIfHeld();
@@ -183,25 +184,7 @@ export class Embed implements EmbedHandle {
     }
     this.slotHeld = true;
 
-    // Legacy embeds: hand off to Vapi. Different transport entirely — no
-    // gateway WS, no JWT, no PCM piping. Vapi opens its own WebRTC stream
-    // and manages mic/playback itself.
-    if (tokenRes.provider === "vapi") {
-      try {
-        const { startVapiCall } = await import("./vapi-driver.js");
-        this.driver = await startVapiCall({
-          publicKey: tokenRes.vapiPublicKey,
-          assistantId: tokenRes.vapiAssistantId,
-          embedId: this.options.embedId,
-          handlers: this.makeDriverHandlers(),
-        });
-      } catch (err) {
-        this.fail("ws_failed", err instanceof Error ? err.message : "Vapi failed");
-      }
-      return;
-    }
-
-    // v2 embeds: pipecat / LiveKit. Browser POSTs the JWT to dispatchUrl,
+    // pipecat / LiveKit. Browser POSTs the JWT to dispatchUrl,
     // gets back LiveKit room credentials, and joins the room via
     // livekit-client (loaded on-demand from CDN). LiveKit handles mic
     // capture and remote audio playback over WebRTC.
@@ -225,9 +208,8 @@ export class Embed implements EmbedHandle {
   }
 
   /**
-   * Shared driver-handler factory. Both pipecat and vapi drivers expose
-   * the same callback surface — bridging them into the embed's state
-   * machine is identical.
+   * Driver-handler factory — bridges driver lifecycle callbacks into the
+   * embed's state machine.
    */
   private makeDriverHandlers() {
     return {

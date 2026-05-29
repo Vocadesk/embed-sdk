@@ -104,17 +104,6 @@ export async function requestToken(args: RequestTokenArgs): Promise<TokenRespons
   }
 
   const body = (await res.json()) as Record<string, unknown>;
-  if (body.provider === "vapi") {
-    if (typeof body.vapiPublicKey !== "string" || typeof body.vapiAssistantId !== "string") {
-      throw new TokenError(res.status, "token_failed", "Vapi token response missing fields");
-    }
-    return {
-      provider: "vapi",
-      vapiPublicKey: body.vapiPublicKey,
-      vapiAssistantId: body.vapiAssistantId,
-    };
-  }
-  // v2 embeds: pipecat dispatch.
   if (typeof body.token !== "string" || typeof body.dispatchUrl !== "string") {
     throw new TokenError(res.status, "token_failed", "Token response missing fields");
   }

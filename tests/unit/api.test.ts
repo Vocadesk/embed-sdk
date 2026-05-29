@@ -55,27 +55,6 @@ describe("requestToken", () => {
     expect(res.provider).toBe("pipecat");
   });
 
-  it("returns vapi-shape response when provider='vapi'", async () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        provider: "vapi",
-        vapiPublicKey: "pk_live_abc",
-        vapiAssistantId: "asst_xyz",
-      }),
-    });
-    const res = await requestToken({
-      apiUrl: "https://api.example.com",
-      embedId: "emb_legacy",
-      browserId: "br_1",
-    });
-    expect(res.provider).toBe("vapi");
-    if (res.provider !== "vapi") throw new Error("unreachable");
-    expect(res.vapiPublicKey).toBe("pk_live_abc");
-    expect(res.vapiAssistantId).toBe("asst_xyz");
-  });
-
   it("includes turnstile token when provided", async () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,
