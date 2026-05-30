@@ -1,8 +1,8 @@
 name: Publish staging SDK
 
 # Builds the SDK with the STAGING backend URLs baked in and publishes it to the
-# gh-pages branch under embed/staging/ — served at
-#   https://cdn.vocadesk.com/embed/staging/vocadesk.min.js
+# gh-pages branch under embed/v0.staging/ — served at
+#   https://cdn.vocadesk.com/embed/v0.staging/vocadesk.min.js
 # (mutable path; staging doesn't pin versions/SRI). Prod versioned releases
 # (release.yml, embed/v{VERSION}/) are untouched.
 on:
@@ -31,7 +31,7 @@ jobs:
         run: npm run build
       - name: Bundle size check
         run: node scripts/check-size.mjs
-      - name: Publish to gh-pages under embed/staging/
+      - name: Publish to gh-pages under embed/v0.staging/
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -41,7 +41,7 @@ jobs:
             "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$DIR"
           # Preserve the Pages custom-domain pin.
           echo "cdn.vocadesk.com" > "$DIR/CNAME"
-          TARGET="$DIR/embed/staging"
+          TARGET="$DIR/embed/v0.staging"
           mkdir -p "$TARGET"
           cp dist/vocadesk.min.js     "$TARGET/vocadesk.min.js"
           cp dist/vocadesk.min.js.map "$TARGET/vocadesk.min.js.map"
