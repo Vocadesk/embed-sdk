@@ -1,0 +1,53 @@
+name: Publish staging SDK
+
+# Builds the SDK with the STAGING backend URLs baked in and publishes it to the
+# gh-pages branch under embed/staging/ — served at
+#   https://cdn.vocadesk.com/embed/staging/vocadesk.min.js
+# (mutable path; staging doesn't pin versions/SRI). Prod versioned releases
+# (release.yml, embed/v{VERSION}/) are untouched.
+on:
+  push:
+    branches: [staging]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - name: Unit tests (gate)
+        run: npm run test
+      - name: Build (staging URLs baked in)
+        env:
+          VITE_API_URL: https://embed-staging.vocadesk.com
+          VITE_WSS_URL: wss://voice-staging.vocadesk.com/embed/v1/call
+        run: npm run build
+      - name: Bundle size check
+        run: node scripts/check-size.mjs
+      - name: Publish to gh-pages under embed/staging/
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          DIR="$(mktemp -d)"
+          git clone --depth 1 --branch gh-pages \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$DIR"
+          # Preserve the Pages custom-domain pin.
+          echo "cdn.vocadesk.com" > "$DIR/CNAME"
+          TARGET="$DIR/embed/staging"
+          mkdir -p "$TARGET"
+          cp dist/vocadesk.min.js     "$TARGET/vocadesk.min.js"
+          cp dist/vocadesk.min.js.map "$TARGET/vocadesk.min.js.map"
+          cd "$DIR"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Publish staging SDK ($GITHUB_SHA)" || { echo "nothing to commit"; exit 0; }
+          git push origin gh-pages
