@@ -117,3 +117,7 @@ Don't. The server expects 24 kHz on the direct path. If you change this, also ch
 
 `.github/workflows/ci.yml` — runs lint + typecheck + unit + e2e on every PR.
 `.github/workflows/release.yml` — on tag `v*.*.*` builds, uploads to R2, prints the SRI hash. See README "Releasing" for the secret setup.
+
+## Code search — prefer CodeGraph
+
+This repo has a local CodeGraph index at `.codegraph/codegraph.db`. **Prefer `mcp__codegraph__*` tools** (`search`, `context`, `callers`, `callees`, `impact`, `node`) over `Grep`/`Glob`/Explore agents for symbol lookup and call-graph queries. Fall back to grep only for content searches (strings, comments, log messages) or when CodeGraph returns nothing.

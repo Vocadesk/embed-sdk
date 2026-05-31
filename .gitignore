@@ -9,3 +9,6 @@ test-results/
 .env.*.local
 .DS_Store
 .vite/
+
+# CodeGraph index (https://github.com/colbymchenry/codegraph)
+.codegraph/
