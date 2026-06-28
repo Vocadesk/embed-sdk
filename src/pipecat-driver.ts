@@ -46,11 +46,16 @@ interface LiveKitTrack {
 interface LiveKitRoomEventMap {
   TrackSubscribed: string;
   Disconnected: string;
+  AudioPlaybackStatusChanged: string;
 }
 interface LiveKitRoom {
   connect(url: string, token: string): Promise<void>;
   disconnect(): Promise<void>;
   on(event: string, listener: (...args: unknown[]) => void): unknown;
+  /** False until a user gesture unblocks browser autoplay; gates agent audio. */
+  readonly canPlaybackAudio: boolean;
+  /** Resumes the AudioContext so subscribed agent audio is actually heard. */
+  startAudio(): Promise<void>;
   localParticipant: {
     setMicrophoneEnabled(enabled: boolean): Promise<unknown>;
   };
@@ -144,6 +149,18 @@ export async function startPipecatCall(args: {
       el.style.display = "none";
       document.body.appendChild(el);
       audioElements.push(el);
+      // autoplay=true alone isn't enough — browsers can still block playback.
+      // Kick it explicitly (and retry via AudioPlaybackStatusChanged below).
+      void el.play().catch(() => undefined);
+    }
+  });
+
+  // Browser autoplay policy can leave the agent's audio muted even after the
+  // track is subscribed and attached. LiveKit signals this via canPlaybackAudio;
+  // when playback becomes allowed, (re)start every element so the agent is heard.
+  room.on(lk.RoomEvent.AudioPlaybackStatusChanged, () => {
+    if (room.canPlaybackAudio) {
+      for (const el of audioElements) void el.play().catch(() => undefined);
     }
   });
 
@@ -171,6 +188,19 @@ export async function startPipecatCall(args: {
   } catch (err) {
     console.warn("[vocadesk] mic enable failed:", err);
   }
+
+  // 5. Unblock agent audio playback. Even though the call started from a user
+  //    click, autoplay policy can leave remote audio muted; startAudio() resumes
+  //    the AudioContext (the getUserMedia call above grants the media engagement
+  //    browsers want). Without this the agent connects but is never heard.
+  if (!room.canPlaybackAudio) {
+    try {
+      await room.startAudio();
+    } catch (err) {
+      console.warn("[vocadesk] startAudio failed:", err);
+    }
+  }
+  for (const el of audioElements) void el.play().catch(() => undefined);
 
   return {
     async stop(): Promise<void> {
