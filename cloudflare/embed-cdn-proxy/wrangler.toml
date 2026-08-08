@@ -1,0 +1,7 @@
+name = "callcat-embed-cdn-proxy"
+main = "src/index.js"
+compatibility_date = "2026-07-01"
+
+routes = [
+  { pattern = "embed-cdn.callcat.ai/*", zone_name = "callcat.ai" }
+]
