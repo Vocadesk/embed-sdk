@@ -11,17 +11,33 @@ export interface MountOptions {
   wssUrl?: string;
 }
 
+/**
+ * Options for `Vocadesk.mountChat` / `[data-vocadesk-chat]` text-chat embeds.
+ * Mirrors `MountOptions` minus the voice-only `wssUrl` override — chat
+ * always gets its WebSocket endpoint from the token response's
+ * `dispatchUrl` (a `wss://` URL for chat embeds).
+ */
+export interface ChatMountOptions {
+  /** Embed ID (the value of [data-vocadesk-chat]). */
+  embedId: string;
+  /** Override the customer-facing label on the launcher bubble. */
+  label?: string;
+  /** Override the token endpoint base URL (dev/staging only). */
+  apiUrl?: string;
+}
+
 export interface EmbedHandle {
   destroy(): void;
 }
 
 /**
  * JSON body returned by POST /v1/tokens. The SDK POSTs the JWT to
- * dispatchUrl, gets back LiveKit room URL + token, and joins the room
- * via livekit-client.
+ * dispatchUrl. For voice ("pipecat") embeds that's an https:// dispatch
+ * endpoint that hands back LiveKit room credentials; for chat embeds it's
+ * a wss:// URL the SDK connects to directly.
  */
 export interface TokenResponse {
-  provider: "pipecat";
+  provider: "pipecat" | "chat";
   token: string;
   dispatchUrl: string;
   expiresAt: string;

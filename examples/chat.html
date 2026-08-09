@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vocadesk embed — text chat</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 640px;
+      margin: 4rem auto;
+      padding: 1rem;
+      color: #1a1a2e;
+      line-height: 1.55;
+    }
+    h1 { font-size: 1.5rem; }
+    p { color: #555; }
+    .demo {
+      margin: 2rem 0;
+      height: 480px;
+      position: relative;
+      border: 1px dashed #ccc;
+    }
+    /* Anchor the launcher bubble to the bottom-right of the demo box, like
+       it would be pinned to a page corner in a real integration. */
+    .demo [data-vocadesk-chat] {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Vocadesk embed — text chat</h1>
+  <p>The bubble below is wired via the <code>data-vocadesk-chat</code> attribute. The SDK auto-binds on page load.</p>
+
+  <div class="demo">
+    <div data-vocadesk-chat="emb_chat_demo"></div>
+  </div>
+
+  <p style="font-size:0.9em;color:#888">
+    Open the dev tools console to see <code>vocadesk:chat-start</code>, <code>vocadesk:chat-end</code>, and <code>vocadesk:chat-error</code> events.
+  </p>
+
+  <script>
+    document.addEventListener("vocadesk:chat-start", () => console.log("chat started"));
+    document.addEventListener("vocadesk:chat-end",   (e) => console.log("chat ended:", e.detail));
+    document.addEventListener("vocadesk:chat-error", (e) => console.log("chat error:", e.detail));
+  </script>
+
+  <script src="/dist/vocadesk.min.js" defer></script>
+</body>
+</html>
