@@ -108,7 +108,10 @@ export async function requestToken(args: RequestTokenArgs): Promise<TokenRespons
     throw new TokenError(res.status, "token_failed", "Token response missing fields");
   }
   return {
-    provider: "pipecat",
+    // Forward whatever the gateway sent; default to "pipecat" for
+    // backwards compat with responses that omit the field (pre-chat
+    // gateway versions only ever issued pipecat tokens).
+    provider: body.provider === "chat" ? "chat" : "pipecat",
     token: body.token,
     dispatchUrl: body.dispatchUrl,
     expiresAt: typeof body.expiresAt === "string" ? body.expiresAt : "",
