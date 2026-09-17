@@ -72,8 +72,8 @@ jobs:
 
           # Tiny index so visiting / on the apex doesn't 404.
           cat > "$DIR/index.html" <<HTML
-          <!doctype html><meta charset=utf-8><title>Vocadesk embed-sdk</title>
-          <h1>Vocadesk embed-sdk</h1>
+          <!doctype html><meta charset=utf-8><title>callcat.ai embed-sdk</title>
+          <h1>callcat.ai embed-sdk</h1>
           <p>Versioned, immutable JS bundles served from this domain.</p>
           <p>Latest: <code>https://cdn.vocadesk.com/embed/v${VERSION}/vocadesk.min.js</code></p>
           <p>Source: <a href="https://github.com/${GITHUB_REPOSITORY}">github.com/${GITHUB_REPOSITORY}</a></p>

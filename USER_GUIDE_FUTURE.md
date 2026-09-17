@@ -1,17 +1,17 @@
-# Vocadesk web-call embed — user guide (staging.vocadesk.com)
+# callcat.ai web-call embed — user guide (staging.vocadesk.com)
 
 A "web call" lets a visitor on any website press a button and have a live voice conversation with one of your AI agents — same kind of call as a phone call, just in the browser.
 
 This guide takes you from zero to a working call on an external site in about 10 minutes. No coding required beyond pasting an HTML snippet.
 
-> **Which dashboard am I on?** This guide is for the **new** Vocadesk dashboard at **https://staging.vocadesk.com**. If you log in at `https://app.vocadesk.com` (the original dashboard), use [USER_GUIDE.md](USER_GUIDE.md) instead. The customer-facing snippet, the SDK, and the call experience are identical between the two — only the operator dashboard differs.
+> **Which dashboard am I on?** This guide is for the **new** callcat.ai dashboard at **https://staging.vocadesk.com**. If you log in at `https://app.vocadesk.com` (the original dashboard), use [USER_GUIDE.md](USER_GUIDE.md) instead. The customer-facing snippet, the SDK, and the call experience are identical between the two — only the operator dashboard differs.
 
 ---
 
 ## Before you start
 
 You need:
-- A **Vocadesk operator account** (log in at https://staging.vocadesk.com).
+- A **callcat.ai operator account** (log in at https://staging.vocadesk.com).
 - At least **one configured agent** — the one visitors will talk to.
 - **The website** where you want the button to appear — you need permission to edit its HTML (or to add code via a CMS like WordPress, Webflow, Squarespace, etc.).
 - The website must use **HTTPS** (browsers refuse to give microphone access on plain HTTP). Most modern hosts give you HTTPS automatically.
@@ -68,7 +68,7 @@ Click **Copy snippet**. The `emb_…` value is already filled in for you — tha
 
 The snippet has two parts. They can be placed anywhere on the page, as long as both are present.
 
-- **The `<script>` line** loads the Vocadesk code. Put it once per page — anywhere inside `<head>` or near the end of `<body>` is fine. If you have it on several pages, repeat it on each.
+- **The `<script>` line** loads the callcat.ai code. Put it once per page — anywhere inside `<head>` or near the end of `<body>` is fine. If you have it on several pages, repeat it on each.
 - **The `<div data-vocadesk-embed=…>` line** is the actual button visitors see (the SDK turns the div into a styled button at load time). Put it where you want the button to appear (a contact section, a sticky corner, a hero CTA — your call).
 
 ### Where to paste it, by host
@@ -103,7 +103,7 @@ That's the whole experience for visitors. No app to install, no login required, 
 
 After the call ends:
 
-1. Go to **Calls** in the Vocadesk dashboard at https://staging.vocadesk.com.
+1. Go to **Calls** in the callcat.ai dashboard at https://staging.vocadesk.com.
 2. Your recent call will be near the top of the list (sorted by time).
 3. Click it to open the detail view, which includes:
    - Duration
@@ -165,7 +165,7 @@ If you have your own static-html test setup (or you save this as `test.html` on 
 ```html
 <!doctype html>
 <meta charset="utf-8">
-<title>Vocadesk embed test</title>
+<title>callcat.ai embed test</title>
 
 <style>
   body { font-family: system-ui, sans-serif; max-width: 640px; margin: 4rem auto; padding: 1rem; }
