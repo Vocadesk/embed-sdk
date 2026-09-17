@@ -1,4 +1,4 @@
-# Vocadesk embed SDK
+# callcat.ai embed SDK
 
 A drop-in JavaScript snippet that turns any HTML element into a voice call button. Visitors click, talk to your AI agent, and hang up — no accounts, no extensions, no second tab.
 
