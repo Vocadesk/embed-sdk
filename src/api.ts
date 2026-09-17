@@ -8,7 +8,7 @@ import type { TokenResponse } from "./types.js";
 
 /**
  * Best-effort release of the concurrency slot. Used by the SDK after a
- * call ends (Vapi has no server-side end signal) and on `pagehide` so a
+ * call ends and on `pagehide` so a
  * fresh tab can immediately reconnect without waiting for the gateway's
  * 1-hour safety-net TTL. `keepalive` lets the request survive navigation.
  */
