@@ -6,7 +6,7 @@
 # Needs GH_TOKEN (fine-grained token, Contents: read/write on Vocadesk/embed-sdk).
 set -euo pipefail
 SUBDIR="$1"; MESSAGE="$2"; INDEX="${3:-}"
-REPO_URL="https://github.com/Vocadesk/embed-sdk.git"
+REPO_URL="${REPO_URL:-https://github.com/Vocadesk/embed-sdk.git}"  # override only for local tests
 AUTH="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
 DIR="$(mktemp -d)"
 if git -c http.extraheader="$AUTH" clone -q --depth 1 --branch gh-pages "$REPO_URL" "$DIR" 2>/dev/null; then

@@ -39,9 +39,13 @@ body = f"""## CDN URL
 """
 
 
-def call(method, endpoint, data=None, raw=None, ctype="application/json", base="https://api.github.com"):
+API = os.environ.get("GITHUB_API", "https://api.github.com")  # overrides only for local tests
+UPLOADS = os.environ.get("GITHUB_UPLOADS", "https://uploads.github.com")
+
+
+def call(method, endpoint, data=None, raw=None, ctype="application/json", base=None):
     payload = raw if raw is not None else (json.dumps(data).encode() if data is not None else None)
-    req = urllib.request.Request(base + endpoint, data=payload, method=method)
+    req = urllib.request.Request((base or API) + endpoint, data=payload, method=method)
     req.add_header("Authorization", "Bearer " + os.environ["GH_TOKEN"])
     req.add_header("Accept", "application/vnd.github+json")
     if payload is not None:
@@ -67,5 +71,5 @@ for name, ctype in (("vocadesk.min.js", "text/javascript"), ("vocadesk.min.js.ma
         call("DELETE", f"/repos/{REPO}/releases/assets/{existing[name]}")
     with open(f"dist/{name}", "rb") as f:
         call("POST", f"/repos/{REPO}/releases/{rel['id']}/assets?name={name}", raw=f.read(),
-             ctype=ctype, base="https://uploads.github.com")
+             ctype=ctype, base=UPLOADS)
     print("attached", name)
