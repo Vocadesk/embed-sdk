@@ -1,0 +1,64 @@
+# Versioned release (replaces .github/workflows/release.yml, 27 Oct 2026). Trigger: tag v*.*.*,
+# project vocadesk-492716. Builds the bundle, checks its size, computes the SRI hash, publishes
+# it to gh-pages under embed/v{VERSION}/ (served at cdn.vocadesk.com; versioned paths are
+# immutable -- customers pin a version + SRI hash) and creates the GitHub Release.
+#
+# API + WSS URLs: the former workflow baked in the GitHub secrets SDK_BUILD_API_URL /
+# SDK_BUILD_WSS_URL (comment there: unset -> Vite falls back to the production defaults in
+# src/config.ts). Here they are the trigger substitutions _SDK_BUILD_API_URL / _SDK_BUILD_WSS_URL;
+# left empty they are not exported and the production defaults apply.
+#
+# Needs the Secret Manager secret `github-pages-token` (Contents: read/write on
+# Vocadesk/embed-sdk: pushes gh-pages and creates the Release); the build service account needs
+# roles/secretmanager.secretAccessor on it.
+substitutions:
+  _SDK_BUILD_API_URL: ''
+  _SDK_BUILD_WSS_URL: ''
+steps:
+  - id: install
+    name: node:20
+    entrypoint: npm
+    args: ['ci']
+  - id: build
+    name: node:20
+    entrypoint: bash
+    waitFor: ['install']
+    args:
+      - -ec
+      - |
+        [ -n "${_SDK_BUILD_API_URL}" ] && export VITE_API_URL="${_SDK_BUILD_API_URL}"
+        [ -n "${_SDK_BUILD_WSS_URL}" ] && export VITE_WSS_URL="${_SDK_BUILD_WSS_URL}"
+        npm run build
+        node scripts/check-size.mjs
+        HASH=$$(openssl dgst -sha384 -binary dist/vocadesk.min.js | openssl base64 -A)
+        echo "sha384-$$HASH" > dist/sri.txt
+        echo "Computed SRI: sha384-$$HASH"
+  - id: publish
+    name: python:3.12
+    entrypoint: bash
+    waitFor: ['build']
+    secretEnv: ['GH_TOKEN']
+    args:
+      - -ec
+      - |
+        VERSION="${TAG_NAME}"
+        VERSION="$${VERSION#v}"
+        SRI="$$(cat dist/sri.txt)"
+        rm dist/sri.txt
+        # Tiny index so visiting / on the apex doesn't 404.
+        cat > /workspace/index.html <<HTML
+        <!doctype html><meta charset=utf-8><title>callcat.ai embed-sdk</title>
+        <h1>callcat.ai embed-sdk</h1>
+        <p>Versioned, immutable JS bundles served from this domain.</p>
+        <p>Latest: <code>https://cdn.vocadesk.com/embed/v$${VERSION}/vocadesk.min.js</code></p>
+        <p>Source: <a href="https://github.com/Vocadesk/embed-sdk">github.com/Vocadesk/embed-sdk</a></p>
+        HTML
+        scripts/ci/publish-gh-pages.sh "v$${VERSION}" "Publish v$${VERSION}" /workspace/index.html
+        python3 scripts/ci/github-release.py "$${VERSION}" "$${SRI}"
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/github-pages-token/versions/latest
+      env: GH_TOKEN
+options:
+  logging: CLOUD_LOGGING_ONLY
+timeout: 900s
