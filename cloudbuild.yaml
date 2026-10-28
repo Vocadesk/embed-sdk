@@ -1,0 +1,47 @@
+# Staging SDK (replaces .github/workflows/staging.yml, 27 Oct 2026). Trigger: push to staging,
+# project vocadesk-staging. Builds the SDK with the STAGING backend URLs baked in and publishes it
+# to the gh-pages branch under embed/v0.staging/ -- served at
+#   https://cdn.vocadesk.com/embed/v0.staging/vocadesk.min.js
+# (mutable path; staging doesn't pin versions/SRI). Versioned prod releases
+# (cloudbuild-release.yaml, embed/v{VERSION}/) are untouched.
+#
+# The publish step pushes to gh-pages with a GitHub token from Secret Manager (secret
+# `github-pages-token`, Contents: read/write on Vocadesk/embed-sdk); the build service account
+# needs roles/secretmanager.secretAccessor on it. (GITHUB_TOKEN only exists inside Actions.)
+steps:
+  - id: install
+    name: node:20
+    entrypoint: npm
+    args: ['ci']
+  - id: test
+    name: node:20
+    entrypoint: npm
+    args: ['run', 'test']
+    waitFor: ['install']
+  - id: build
+    name: node:20
+    entrypoint: bash
+    waitFor: ['test']
+    env:
+      - VITE_API_URL=https://embed-staging.vocadesk.com
+      - VITE_WSS_URL=wss://voice-staging.vocadesk.com/embed/v1/call
+    args:
+      - -ec
+      - |
+        npm run build
+        node scripts/check-size.mjs
+  - id: publish
+    name: node:20
+    entrypoint: bash
+    waitFor: ['build']
+    secretEnv: ['GH_TOKEN']
+    args:
+      - -ec
+      - scripts/ci/publish-gh-pages.sh v0.staging "Publish staging SDK (${COMMIT_SHA})"
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/github-pages-token/versions/latest
+      env: GH_TOKEN
+options:
+  logging: CLOUD_LOGGING_ONLY
+timeout: 900s
